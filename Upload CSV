@@ -1,0 +1,35 @@
+METHOD upload_csv.
+
+" Local data
+DATA: lt_data_tab TYPE TABLE OF char255. " Define data_tab properly
+
+" Check if the file name is provided
+IF NOT lv_file IS INITIAL.
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename                = lv_file
+      filetype                = 'ASC'
+    TABLES
+      data_tab                = lt_data_tab
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      gui_refuse_filetransfer = 3
+      OTHERS                  = 17.
+
+
+
+  " Handle errors
+  IF sy-subrc <> 0.
+    WRITE: / 'Error occurred during file upload.'.
+    EXIT.
+  ENDIF.
+
+  ELSE.
+    WRITE: / 'No file provided.'.
+
+
+ENDIF.
+
+
+ENDMETHOD.
