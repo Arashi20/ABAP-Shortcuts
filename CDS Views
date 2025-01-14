@@ -1,0 +1,29 @@
+## Creating RAP Models in ABAP (Eclipse)
+
+
+1. Create Database Table
+- this can be found in: core data services → dictionary → database tables
+- Here you can define regular key fields, and regular fields
+- example:
+    -define table z161am_flights {
+    key client       : abap.clnt not null;
+    key carrierid    : abap.char(3) not null;
+    key connectionid : abap.numc(4) not null;
+    key flightdate   : abap.dats not null;
+    seatsmax         : abap.int4;
+    seatsocc         : abap.int4; }
+
+
+2. Create The Root CDS View
+- This can be found in: Core data services →  Data definitions
+- Use `define root view entity` to make the view compatible with RAP.
+- Now map all fields from the database table to this CDS view
+- Example:
+    -define root view entity Z_Flight161AM_CDS
+    as select from z161am_flights
+    {
+    key carrierid          as CarrierId,
+    key connectionid       as ConnectionId,
+    key flightdate         as FlightDate,
+    seatsmax           as SeatsMax }
+
