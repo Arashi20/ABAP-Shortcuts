@@ -4,6 +4,7 @@
 1. Create Database Table
 - this can be found in: core data services → dictionary → database tables
 - Here you can define regular key fields, and regular fields
+
 - example:
     -define table z161am_flights {
     key client       : abap.clnt not null;
@@ -18,6 +19,7 @@
 - This can be found in: Core data services →  Data definitions
 - Use `define root view entity` to make the view compatible with RAP.
 - Now map all fields from the database table to this CDS view
+
 - Example:
     -define root view entity Z_Flight161AM_CDS
     as select from z161am_flights
@@ -26,4 +28,24 @@
     key connectionid       as ConnectionId,
     key flightdate         as FlightDate,
     seatsmax           as SeatsMax }
+
+
+3. Create a Behavior Definition
+- The behavior definition specifies how the entity behaves, including CRUD operations and custom actions. This can be found in: Core data services → Behavior Definitions
+- You can also add custom actions here
+- Example of a program with 3 regular actions and one custom added:
+    - **managed implementation in class zbp_flight161am_cds unique;
+    strict ( 2 );**
+        
+        **define behavior for Z_Flight161AM_CDS alias flight
+        persistent table Z161AM_FLIGHTS
+        lock master
+        authorization master ( instance )
+        {
+        create;
+        update;
+        delete;**
+        
+        **action markFullyBooked result [1] $self; // Custom action
+        }**
 
