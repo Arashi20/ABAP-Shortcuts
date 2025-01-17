@@ -1,0 +1,30 @@
+*How to convert XML Data to an ABAP Structure
+*The method convert_xml_to_abap is universal and standardized for general XML-to-ABAP conversion tasks:
+     *It converts raw XML (iv_data) into a generic internal table (TYP_SMUM_XMLTB)
+
+
+method convert_xml_to_abap.
+    data: lv_xstring type xstring,
+          lt_xml     type standard table of smum_xmltb,  "generic internal table
+          return     type standard table of bapiret2.
+
+    call function 'SCMS_STRING_TO_XSTRING'   "Converts the string representation of XML into an XSTRING format (binary).
+      exporting
+        text     = iv_data
+        mimetype = 'SPACE '
+      importing
+        buffer   = lv_xstring
+      exceptions
+        failed   = 1
+        others   = 2.
+
+    call function 'SMUM_XML_PARSE'   "Parses the XSTRING into an internal table.
+      exporting
+        xml_input = lv_xstring
+      tables
+        xml_table = lt_xml
+        return    = return.
+
+    rt_xml = lt_xml.
+
+  endmethod.
