@@ -1,0 +1,71 @@
+*Here I'm showing how to create a dynamic selection screen in Classic ABAP.
+
+
+*first selection screen:
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
+  PARAMETERS: pa_X TYPE Y OBLIGATORY.
+SELECTION-SCREEN END OF BLOCK b1.
+
+
+*second selection screen:
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE text-002.
+  PARAMETERS: pa_X2 TYPE char1 AS LISTBOX VISIBLE LENGTH 20 OBLIGATORY   "now it's no fill in the blank, but a dropdown box instead (you will have to initialize it later)
+              USER-COMMAND uc_type.
+SELECTION-SCREEN END OF BLOCK b2.
+
+
+
+*third selection screen; here you can select an option by simply selecting it ( "WHEN pa_X3 EQ 'X').
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE text-003.
+  PARAMETERS: pa_X3   TYPE boolean RADIOBUTTON GROUP rg1 USER-COMMAND uc,
+              pa_X4  TYPE boolean RADIOBUTTON GROUP rg1,
+              pa_X5  TYPE boolean RADIOBUTTON GROUP rg1,
+              pa_X5 TYPE boolean RADIOBUTTON GROUP rg1,
+              pa_X6  TYPE boolean RADIOBUTTON GROUP rg1,
+              pa_X7  TYPE boolean RADIOBUTTON GROUP rg1.
+SELECTION-SCREEN END OF BLOCK b3.
+
+
+
+*initialization of the dropdown box:
+DATA: lt_list TYPE STANDARD TABLE OF vrm_value,   "standard SAP tables for key-value pairs
+      ls_value TYPE vrm_value.
+
+
+INITIALIZATION.
+  CLEAR lt_list.
+
+  ls_value-key = 'X'.
+  ls_value-text = 'XXX'.   "this is the part that will be displayed in the dropdown menu.
+  APPEND ls_value TO lt_list.
+
+  ls_value-key = 'Y'.
+  ls_value-text = 'YYY'.
+  APPEND ls_value TO lt_list.
+
+  CALL FUNCTION 'VRM_SET_VALUES'   "standard sap function for this.
+    EXPORTING
+      id     = 'X'
+      values = lt_list.
+
+
+
+*Now we will work on the actual changes that might occur with the dynamic selection screen based on what the user picks in earlier blocks.
+at selection-screen output.
+
+ loop at screen.  "go over the different options of the screen
+    if screen-group1 = 'XXX'.
+      screen-active = cond #( when pa_X eq 'X' or pa_X1 eq 'X' then '1' else '0' ).
+    endif.
+    if screen-group1 = 'YYY'.
+      screen-active = cond #( when pa_X eq 'X' then '1' else '0' ).
+    endif.
+    modify screen.
+ endloop.
+
+
+*the actual logic after everything in the selection screen has been filled in and the user has clicked on "execute"
+START-OF-SELECTION 
+....
+....
+WRITE:  '   '
