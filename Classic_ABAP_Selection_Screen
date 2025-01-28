@@ -1,71 +1,165 @@
 *Here I'm showing how to create a dynamic selection screen in Classic ABAP.
 
 
-*first selection screen:
-SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
-  PARAMETERS: pa_X TYPE Y OBLIGATORY.
+REPORT z_program_template.
+
+* Input screen 1: enter document number
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+  PARAMETERS: p_doc_num TYPE doc_type MEMORY ID mem_id OBLIGATORY.  "can be any parameter.
 SELECTION-SCREEN END OF BLOCK b1.
 
-
-*second selection screen:
-SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE text-002.
-  PARAMETERS: pa_X2 TYPE char1 AS LISTBOX VISIBLE LENGTH 20 OBLIGATORY   "now it's no fill in the blank, but a dropdown box instead (you will have to initialize it later)
-              USER-COMMAND uc_type.
-SELECTION-SCREEN END OF BLOCK b2.
-
-
-
-*third selection screen; here you can select an option by simply selecting it ( "WHEN pa_X3 EQ 'X').
-SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE text-003.
-  PARAMETERS: pa_X3   TYPE boolean RADIOBUTTON GROUP rg1 USER-COMMAND uc,
-              pa_X4  TYPE boolean RADIOBUTTON GROUP rg1,
-              pa_X5  TYPE boolean RADIOBUTTON GROUP rg1,
-              pa_X5 TYPE boolean RADIOBUTTON GROUP rg1,
-              pa_X6  TYPE boolean RADIOBUTTON GROUP rg1,
-              pa_X7  TYPE boolean RADIOBUTTON GROUP rg1.
+* Input screen 2: choose which action to send
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE TEXT-003.
+  PARAMETERS: p_action1 TYPE boolean RADIOBUTTON GROUP rg1 USER-COMMAND uc,
+              p_action2 TYPE boolean RADIOBUTTON GROUP rg1,
+              p_action3 TYPE boolean RADIOBUTTON GROUP rg1,
+              p_action4 TYPE boolean RADIOBUTTON GROUP rg1,
+              p_action5 TYPE boolean RADIOBUTTON GROUP rg1,
+              p_action6 TYPE boolean RADIOBUTTON GROUP rg1.
 SELECTION-SCREEN END OF BLOCK b3.
 
+* Input screen 3: optional parameters per request
+SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE TEXT-004.
+  SELECTION-SCREEN COMMENT /1(79) comm1 MODIF ID mod_id.
+  PARAMETERS: p_opt1 TYPE abap_boolean MODIF ID mod1,
+              p_opt2 TYPE string MODIF ID mod2,
+              p_opt3 TYPE string LOWER CASE MODIF ID mod3,
+              p_opt4 TYPE string LOWER CASE,
+              p_opt5 TYPE string LOWER CASE MODIF ID mod4,
+              p_opt6 TYPE string MODIF ID mod5,
+              p_opt7 TYPE string MODIF ID mod6,
+              p_opt8 TYPE custom_type MODIF ID mod7.
+SELECTION-SCREEN END OF BLOCK b4.
 
+* General data
+DATA:
+      lr_msg_class TYPE REF TO zcl_msg_class,
+      lr_api_class TYPE REF TO zcl_api_class,
+      lv_doc_type  TYPE char1.
 
-*initialization of the dropdown box:
-DATA: lt_list TYPE STANDARD TABLE OF vrm_value,   "standard SAP tables for key-value pairs
-      ls_value TYPE vrm_value.
+*--------------------------------------------------------------------*
+AT SELECTION-SCREEN ON p_doc_num.  "here you can define logic for after the first parameter has been filled in
+*--------------------------------------------------------------------*
+  DATA: lv_order_type TYPE order_type.
 
+  "Retrieve the order type from the tables
+  SELECT b~order_type
+    FROM table1 AS a INNER JOIN table2 AS b ON a~order_num = b~order_num
+    UP TO 1 ROWS
+    INTO lv_order_type
+    WHERE a~doc_num = p_doc_num.
+  ENDSELECT.
 
-INITIALIZATION.
-  CLEAR lt_list.
+  IF sy-subrc <> 0.
+    WRITE: 'No order type found for this document'.
+  ELSE.
+    "Determine the document type based on the order type
+    IF lv_order_type = 'TYPE1'.
+      lv_doc_type = 'A'.
+    ELSEIF lv_order_type = 'TYPE2'.
+      lv_doc_type = 'B'.
+    ELSE.
+      lv_doc_type = 'C'. "unknown
+    ENDIF.
+  ENDIF.
 
-  ls_value-key = 'X'.
-  ls_value-text = 'XXX'.   "this is the part that will be displayed in the dropdown menu.
-  APPEND ls_value TO lt_list.
+*--------------------------------------------------------------------*
+AT SELECTION-SCREEN OUTPUT.  "based on the parameter filled in + previous block, you can select what radiobuttons will be activated or not
+*--------------------------------------------------------------------*
+  LOOP AT SCREEN.
+    comm1 = 'Additional attachment ID to send to system'.
 
-  ls_value-key = 'Y'.
-  ls_value-text = 'YYY'.
-  APPEND ls_value TO lt_list.
+    IF screen-group1 = 'MOD1'.
+      screen-active = COND #( WHEN p_action1 EQ 'X' OR p_action2 EQ 'X' OR p_action3 EQ 'X' THEN '1' ELSE '0' ).
+    ENDIF.
+    IF screen-group1 = 'MOD2'.
+      screen-active = COND #( WHEN p_action5 EQ 'X' THEN '1' ELSE '0' ).
+    ENDIF.
+    IF screen-group1 = 'MOD3'.
+      screen-active = COND #( WHEN p_action2 EQ 'X' THEN '1' ELSE '0' ).
+    ENDIF.
+    IF screen-group1 = 'MOD4'.
+      screen-active = COND #( WHEN p_action3 EQ 'X' THEN '1' ELSE '0' ).
+    ENDIF.
+    IF screen-group1 = 'MOD5'.
+      screen-active = COND #( WHEN p_action6 EQ 'X' THEN '1' ELSE '0' ).
+      IF screen-group3 = 'COM'.
+        screen-intensified = '1'.
+      ENDIF.
+    ENDIF.
+    IF screen-group1 = 'MOD6'.
+      screen-active = COND #( WHEN p_action4 EQ 'X' OR p_action3 EQ 'X' THEN '1' ELSE '0' ).
+    ENDIF.
 
-  CALL FUNCTION 'VRM_SET_VALUES'   "standard sap function for this.
-    EXPORTING
-      id     = 'X'
-      values = lt_list.
+    "Hide the p_action5 radiobutton if the document is of type B
+    IF screen-name = 'P_ACTION5' AND lv_doc_type = 'B'.
+      screen-active = 0.
+    ENDIF.
 
+    MODIFY SCREEN.
+  ENDLOOP.
 
+**********************************************************************
+START-OF-SELECTION.   "this is where the main logic takes place
+**********************************************************************
+  IF lv_doc_type IS INITIAL.
+    WRITE: 'No order type found for this document'.
+  ELSE.
+    TRY.
+        "Process the request based on the document type
+        IF lv_doc_type = 'A'.
+          lr_msg_class = NEW zcl_msg_class( ).
+          IF p_action1 IS NOT INITIAL.
+            lr_msg_class->send_action1(
+              EXPORTING
+                iv_reference = CONV stringval( p_doc_num )
+                iv_approved  = p_opt1
+                iv_remarks   = p_opt4
+                iv_contact   = p_opt5
+            ).
+          ELSEIF p_action2 IS NOT INITIAL.
+            lr_msg_class->send_action2(
+              EXPORTING
+                iv_reference = CONV stringval( p_doc_num )
+                iv_approved  = p_opt1
+                iv_remarks   = p_opt4
+                iv_contact   = p_opt5
+            ).
+          ELSEIF p_action3 IS NOT INITIAL.
+            lr_msg_class->send_action3(
+              EXPORTING
+                iv_reference = CONV stringval( p_doc_num )
+                iv_subref    = p_opt2
+                iv_approved  = p_opt1
+                iv_remarks   = p_opt4
+                iv_contact   = p_opt5
+            ).
+          ELSEIF p_action4 IS NOT INITIAL.
+            lr_msg_class->send_action4(
+              EXPORTING
+                iv_reference = CONV stringval( p_doc_num )
+                iv_invoice   = p_opt7
+            ).
+          ELSEIF p_action5 IS NOT INITIAL.
+            lr_msg_class->send_action5(
+              EXPORTING
+                iv_reference = CONV stringval( p_doc_num )
+                iv_reason    = p_opt8
+                iv_remarks   = p_opt4
+            ).
+          ENDIF.
+          WRITE: 'Request sent. (Type A)'.
+        ELSEIF lv_doc_type = 'B'.
+          lr_api_class = NEW zcl_api_class( ).
+          lr_api_class->send_instruction( p_doc_num ).
+          WRITE: 'Request sent. (Type B)'.
+        ELSE.
+          WRITE: 'Invalid order type'.
+        ENDIF.
 
-*Now we will work on the actual changes that might occur with the dynamic selection screen based on what the user picks in earlier blocks.
-at selection-screen output.
-
- loop at screen.  "go over the different options of the screen
-    if screen-group1 = 'XXX'.
-      screen-active = cond #( when pa_X eq 'X' or pa_X1 eq 'X' then '1' else '0' ).
-    endif.
-    if screen-group1 = 'YYY'.
-      screen-active = cond #( when pa_X eq 'X' then '1' else '0' ).
-    endif.
-    modify screen.
- endloop.
-
-
-*the actual logic after everything in the selection screen has been filled in and the user has clicked on "execute"
-START-OF-SELECTION 
-....
-....
-WRITE:  '   '
+      CATCH zcx_http_api INTO DATA(lr_exc).
+        WRITE: 'HTTP API Error: ', lr_exc->get_text( ).
+      CATCH cx_root INTO DATA(lr_exc2).
+        WRITE: 'General Error: ', lr_exc2->get_text( ).
+    ENDTRY.
+  ENDIF.
